@@ -15,10 +15,6 @@ from app.models.schemas import DiagnoseResponse
 
 logger = logging.getLogger(__name__)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# System Prompt — THE GUARDRAIL
-# ─────────────────────────────────────────────────────────────────────────────
-
 OPTIMIZER_SYSTEM_PROMPT = """
 You are ResumeForge AI's Optimizer Agent — an elite resume strategist who rewrites 
 resumes to maximize ATS compatibility and recruiter impact.
@@ -48,55 +44,37 @@ failure of your purpose, even if it would produce a "better-sounding" resume.
 
 ## WHAT YOU MUST NEVER DO (Fabrication — ABSOLUTELY FORBIDDEN):
 1. NEVER add a skill, tool, language, framework, or certification the user did not 
-   mention or strongly imply in their original resume — even if it's "probably true" 
-   or "commonly paired" with their stated skills.
+   mention or strongly imply in their original resume.
 2. NEVER invent, estimate, or guess a specific metric/number (%, $, headcount, scale) 
    that wasn't in the original. Use a "[QUANTIFY: ...]" placeholder instead.
 3. NEVER add a new job, project, employer, title, or date range that wasn't in the 
    original resume.
-4. NEVER change a job title to a more senior-sounding one (e.g. "Junior Developer" 
-   → "Software Engineer II") unless the original resume itself shows that title.
+4. NEVER change a job title to a more senior-sounding one unless the original shows it.
 5. NEVER add education, degrees, or certifications not already listed.
-6. NEVER copy phrases, structures, or content from the "web pattern profile" that 
-   contain specific facts — only use it for STYLE and KEYWORD VOCABULARY inspiration.
-7. NEVER claim the candidate has "led a team of X" or similar leadership/scale claims 
-   unless explicitly stated in the original.
-8. If you are EVER uncertain whether an addition counts as a reasonable inference vs. 
-   fabrication, DEFAULT TO NOT ADDING IT. When in doubt, leave it out.
+6. NEVER copy specific facts from the web pattern profile — style inspiration only.
+7. NEVER claim leadership/scale the candidate didn't explicitly state.
+8. When in doubt, leave it out.
 
-## SELF-CHECK BEFORE FINALIZING (perform this internally before output)
-For every single change you make, ask: "Could I point to the EXACT phrase in the 
-original resume that justifies this change?" If no, REVERT that change.
+## SELF-CHECK BEFORE FINALIZING
+For every change: "Could I point to the EXACT phrase in the original resume that 
+justifies this?" If no, REVERT that change.
 
 # ═══════════════════════════════════════════════════════════════════════════
-# YOUR TASK
+# SCORING RULES FOR projected_ats_score — CRITICAL
 # ═══════════════════════════════════════════════════════════════════════════
-
-You will receive:
-1. The original resume text
-2. The target role and optional job description
-3. The Phase 1 diagnostic report (flaws, fluffy phrases, must-have keywords)
-4. A synthesized "web pattern profile" (anonymized structural/style patterns — 
-   STYLE INSPIRATION ONLY, never factual content)
-
-Produce an optimized version of the resume that:
-- Fixes every flaw flagged in the diagnostic where fixable through rephrasing/reformatting
-- Removes fluffy phrases identified in the diagnostic
-- Naturally incorporates must-have keywords WHERE the underlying experience already 
-  supports them (skip any must-have keyword that has zero basis in the original resume 
-  — instead, flag it for the skill gap plan)
-- Matches the section ordering and stylistic conventions from the web pattern profile
-- Uses power verbs from the pattern profile where they accurately describe the 
-  candidate's existing actions
-- Inserts "[QUANTIFY: ...]" placeholders anywhere impact would benefit from a metric 
-  the original didn't provide
+- Your projected scores represent IMPROVEMENT over the original scores provided
+- If you fixed formatting flaws → formatting score MUST go up
+- If you added/surfaced keywords → keyword_match MUST go up
+- If you removed fluffy phrases → readability MUST go up
+- The overall score MUST be >= the original overall score
+- Realistic improvement range: +3 to +15 points overall
+- Do NOT fabricate a massive jump — be honest and realistic
 
 ## OUTPUT CONTRACT
 Respond with ONLY a valid JSON object. No markdown, no preamble.
 
 {
-  "optimized_text": "<the full rewritten resume as plain text with line breaks, 
-                      ready for ATS parsing — preserve section headings>",
+  "optimized_text": "<the full rewritten resume as plain text with line breaks>",
   "changes_summary": "<3-5 sentence summary of the categories of changes made>",
   "guardrail_audit": [
     {
@@ -105,14 +83,13 @@ Respond with ONLY a valid JSON object. No markdown, no preamble.
     }
   ],
   "keywords_incorporated": ["<keyword from must_haves that WAS naturally incorporated>"],
-  "keywords_skipped_no_basis": ["<keyword from must_haves that had NO basis in original 
-                                  resume and was correctly NOT added>"],
+  "keywords_skipped_no_basis": ["<keyword from must_haves that had NO basis in original>"],
   "projected_ats_score": {
-    "overall": <int 0-100>,
-    "keyword_match": <int 0-100>,
-    "formatting": <int 0-100>,
+    "overall": <int 0-100, MUST be >= original overall score>,
+    "keyword_match": <int 0-100, MUST be >= original if keywords were added>,
+    "formatting": <int 0-100, MUST be >= original if formatting was fixed>,
     "sections_completeness": <int 0-100>,
-    "readability": <int 0-100>
+    "readability": <int 0-100, MUST be >= original if fluff was removed>
   }
 }
 """.strip()
@@ -125,10 +102,6 @@ def run_optimizer(
     diagnosis: DiagnoseResponse,
     pattern_profile: dict,
 ) -> dict:
-    """
-    Run the guardrailed optimizer agent.
-    Returns the parsed JSON dict (validated/typed downstream by the caller).
-    """
     jd_block = (
         f"\n\n## TARGET JOB DESCRIPTION\n{job_description.strip()}"
         if job_description
@@ -139,7 +112,9 @@ def run_optimizer(
         f"- {m.keyword}: {m.reason}" for m in diagnosis.must_haves
     ) or "(none identified)"
 
-    fluffy_block = "\n".join(f"- {p}" for p in diagnosis.content_analysis.fluffy_phrases) or "(none identified)"
+    fluffy_block = "\n".join(
+        f"- {p}" for p in diagnosis.content_analysis.fluffy_phrases
+    ) or "(none identified)"
 
     flaws_block = "\n".join(
         f"- [{f.severity}] {f.type} at {f.location}: {f.description} → Fix: {f.suggestion}"
@@ -150,6 +125,17 @@ def run_optimizer(
 ## TARGET ROLE
 {target_role}
 {jd_block}
+
+## ORIGINAL ATS SCORES (Phase 1 diagnostic — your projected scores MUST be higher)
+- Overall: {diagnosis.ats_score.overall}/100
+- Keyword Match: {diagnosis.ats_score.keyword_match}/100
+- Formatting: {diagnosis.ats_score.formatting}/100
+- Sections Completeness: {diagnosis.ats_score.sections_completeness}/100
+- Readability: {diagnosis.ats_score.readability}/100
+
+CRITICAL: Your projected_ats_score overall MUST be >= {diagnosis.ats_score.overall}.
+Score each dimension higher than the original where you made improvements.
+Realistic improvement range is +3 to +15 points overall.
 
 ## ORIGINAL RESUME TEXT (the ONLY source of truth for facts)
 ---
@@ -170,14 +156,25 @@ def run_optimizer(
 ## WEB PATTERN PROFILE (style/structure inspiration ONLY — never factual content)
 {pattern_profile}
 
-Now produce the guardrailed, optimized rewrite. Remember: every change must be 
-traceable to something already in the original resume. Return ONLY the JSON object.
+Now produce the guardrailed, optimized rewrite. Every change must be traceable to 
+something already in the original resume. Return ONLY the JSON object.
 """.strip()
 
     logger.info("Running optimizer agent for role: %s", target_role)
     result = call_llm_json(OPTIMIZER_SYSTEM_PROMPT, user_prompt)
 
-    # Lightweight runtime guardrail sanity check — log if audit trail missing
+    # Runtime safety net: never let projected score drop below original
+    if "projected_ats_score" in result:
+        original_overall = diagnosis.ats_score.overall
+        projected_overall = result["projected_ats_score"].get("overall", original_overall)
+        if projected_overall < original_overall:
+            logger.warning(
+                "Optimizer projected score (%d) below original (%d) — correcting",
+                projected_overall,
+                original_overall,
+            )
+            result["projected_ats_score"]["overall"] = original_overall
+
     if not result.get("guardrail_audit"):
         logger.warning("Optimizer returned no guardrail_audit trail — review output carefully")
 
