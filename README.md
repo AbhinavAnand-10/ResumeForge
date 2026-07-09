@@ -1,3 +1,4 @@
+```markdown
 # ResumeForge AI
 
 > An AI-powered resume diagnosis and optimization platform that tells you the truth about your resume first — then rewrites it without ever fabricating a skill, title, or metric you don't already have.
@@ -66,6 +67,9 @@ resumeforge/
         ├── dashboard/        # Diagnosis → optimize → reveal → export
         ├── components/       # ScoreGauge, DiffViewer, SkillGapRoadmap, etc.
         └── lib/              # Typed API client
+
+```
+
 ---
 
 ## Running Locally
@@ -81,6 +85,7 @@ pip install -r requirements.txt
 cp .env.example .env
 # Fill in your API keys (see Environment Variables below)
 uvicorn main:app --reload --port 8000
+
 ```
 
 Visit `http://localhost:8000/docs` for the interactive API explorer.
@@ -92,6 +97,7 @@ cd frontend
 npm install
 cp .env.local.example .env.local
 npm run dev
+
 ```
 
 Visit `http://localhost:3000`.
@@ -103,7 +109,7 @@ Visit `http://localhost:3000`.
 ### Backend (`backend/.env`)
 
 | Variable | Value | Where to get it |
-|----------|-------|-----------------|
+| --- | --- | --- |
 | `GROQ_API_KEY` | `gsk_...` | Free at [console.groq.com](https://console.groq.com) |
 | `EXA_API_KEY` | `exa-...` | Free at [exa.ai](https://exa.ai) |
 | `LLM_PROVIDER` | `openai` | Leave as-is (Groq uses OpenAI-compatible API) |
@@ -114,7 +120,7 @@ Visit `http://localhost:3000`.
 ### Frontend (`frontend/.env.local`)
 
 | Variable | Value |
-|----------|-------|
+| --- | --- |
 | `NEXT_PUBLIC_API_URL` | Your backend URL, e.g. `http://localhost:8000` |
 
 ---
@@ -128,7 +134,7 @@ Every agent prompt is written so the optimizer can only point to something *alre
 ## API Endpoints
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
+| --- | --- | --- |
 | `POST` | `/api/upload` | Upload resume file, extract text |
 | `POST` | `/api/diagnose` | Run ATS diagnostic, return scores and flaws |
 | `POST` | `/api/optimize` | Web search + guardrailed rewrite + diff |
@@ -139,3 +145,7 @@ Every agent prompt is written so the optimizer can only point to something *alre
 ## Author
 
 **Abhinav Anand** — [GitHub](https://github.com/AbhinavAnand-10)
+
+```
+
+```
