@@ -46,24 +46,26 @@ Any keyword that mattered for the role but had no basis in your resume gets rout
 ---
 
 ## Project Structure
+
+```text
 resumeforge/
-├── backend/                   FastAPI application
-│   ├── main.py                Entrypoint
-│   ├── requirements.txt
-│   ├── .env.example
+├── backend/                  # FastAPI application
+│   ├── main.py               # Entrypoint
+│   ├── requirements.txt      # Dependencies
+│   ├── .env.example          # Environment template
 │   └── app/
-│       ├── api/               Route handlers (upload, diagnose, optimize, export)
-│       ├── agents/            4 LLM agents + LLM client factory
-│       ├── services/          PDF/DOCX parsing, web search, diff engine, export
-│       ├── models/            Pydantic schemas — single source of truth
-│       └── utils/             Config + session store
+│       ├── api/              # Route handlers (upload, diagnose, optimize, export)
+│       ├── agents/           # 4 LLM agents + LLM client factory
+│       ├── services/         # PDF/DOCX parsing, web search, diff engine, export
+│       ├── models/           # Pydantic schemas — single source of truth
+│       └── utils/            # Config + session store
 │
-└── frontend/                  Next.js application
-└── app/
-├── page.tsx           Upload + input phase
-├── dashboard/         Diagnosis → optimize → reveal → export
-├── components/        ScoreGauge, DiffViewer, SkillGapRoadmap, etc.
-└── lib/               Typed API client
+└── frontend/                 # Next.js application
+    └── app/
+        ├── page.tsx          # Upload + input phase
+        ├── dashboard/        # Diagnosis → optimize → reveal → export
+        ├── components/       # ScoreGauge, DiffViewer, SkillGapRoadmap, etc.
+        └── lib/              # Typed API client
 ---
 
 ## Running Locally
